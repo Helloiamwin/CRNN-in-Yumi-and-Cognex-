@@ -1,0 +1,239 @@
+MODULE MainModule
+
+    VAR syncident syncHome;
+
+    PERS tasks task_All{2}:=[["T_ROB_L"],["T_ROB_R"]];
+
+    VAR syncident sync01_0;
+    VAR syncident sync01_1;
+    VAR syncident sync01_2;
+    VAR syncident sync01_3;
+    VAR syncident sync01_4;
+    VAR syncident sync01_5;
+    VAR syncident sync01_6;
+    VAR syncident sync01_7;
+    VAR syncident sync01_8;
+    VAR syncident sync01_9;
+  
+    CONST jointtarget home_joint_R:=[[0,-130,30,0,40,0],[-135, 9E9, 9E9, 9E9, 9E9, 9E9]];
+    !CONST robtarget Cap_pose:=[[307.57,-185.05,239.10],[0.650995,-0.758804,-0.0130378,-0.0158432],[1,0,1,4],[169.065,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Cap_pose:=[[320.29,-218.66,198.19],[0.648448,-0.760975,-0.0121539,-0.016864],[1,0,1,4],[169.065,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    VAR socketdev client;
+   ! VAR string message;
+    VAR rawbytes data;
+    VAR string rcv_data;
+    VAR string Center_Signal;
+    
+    
+    
+    VAR num flag;
+    PERS num Action:=0;
+    
+    VAR bool bResult;
+    CONST robtarget Cap_pose10:=[[-11.58,-327.05,197.37],[0.0605596,-0.844404,-0.107315,-0.521343],[0,0,0,4],[-101.37,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST jointtarget R_ac2_1:=[[8.02764,-121.146,17.267,5.15735,50.9289,16.7904],[-113.112,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget R_ac2_2:=[[141.91,-391.97,373.35],[0.0606448,-0.844212,-0.107377,-0.52163],[0,0,1,4],[-101.346,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget R_ac2_3:=[[141.91,-391.97,373.35],[0.515937,-0.0465363,0.849739,0.0979101],[0,0,-1,4],[-101.346,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+    PROC main()
+      SocketCreate client;
+      SocketConnect client, "192.168.125.5" ,65432;
+      TPErase;
+      TPWrite "Connection Successful";
+      
+   !   SocketAccept server,client, \Time:=WAIT_MAX;
+      SocketSend client,\Str:=" hello server!";
+      rcv_data := " ";
+      
+    WaitSyncTask sync01_1,task_All;   
+    SyncMoveOn sync01_2,task_All;
+    MoveAbsJ home_joint_R\ID:=101, v1000, z0, tool0;
+ !   MoveJ home\ID:=101,v100,z50,tool0;
+    SyncMoveOff sync01_3;
+   
+      WHILE rcv_data <> "x" DO
+          TPWrite "Start wait _ _ _ _";
+          SocketReceive client \Str:= rcv_data\Time:=1000;
+         IF rcv_data ="home"  THEN
+           MoveAbsJ home_joint_R, v1000, z0, tool0;
+         ENDIF
+         
+        IF rcv_data ="Start"  THEN
+            TPWrite "Go to the capture position";
+            TPWrite "-----------------------";
+            MoveJ [[163.25,-329.41,208.68],[0.0218428,-0.85309,-0.107468,-0.510109],[0,-1,1,4],[-100.882,9E+09,9E+09,9E+09,9E+09,9E+09]], v1000, z200, tool0;
+            MoveJ [[181.20,-339.04,213.17],[0.675818,-0.596382,0.239381,-0.360963],[0,0,1,4],[-123.112,9E+09,9E+09,9E+09,9E+09,9E+09]], v1000, z200, tool0;
+		    MoveJ Cap_pose, v1000, z0, tool0;
+            
+            
+            WaitTime 2;
+            SocketSend client,\Str:="32";
+            TPWrite "Has send Trigger Signal to Cognex Cam";
+            TPWrite "-----------------------";
+            
+            WaitTime 2; !Doi cam chup
+            SocketSend client,\Str:="Done_Capture";
+            TPWrite "Has send 'Done_Capture'";
+            TPWrite "-----------------------";
+            
+            MoveAbsJ home_joint_R, v1000, z0, tool0;
+            SocketReceive client \Str:= rcv_data;
+
+            Center_Signal := " ";
+            WHILE Center_Signal <> "x" DO
+                
+                TPWrite "Wait action_sig";
+                TPWrite "-----------------------";
+                SocketReceive client \Str:= rcv_data\Time:=1000;
+ 
+                IF rcv_data = "gio tay trai" THEN
+                    Action :=1;
+                ELSEIF rcv_data = "gio tay phai" THEN
+                    Action :=2;
+                ELSEIF rcv_data = "gio hai tay" THEN
+                    Action :=3;
+                ELSEIF rcv_data = "dua tay trai" THEN
+                    Action :=4;
+                ENDIF
+                
+                WaitSyncTask sync01_4,task_All;
+                
+                IF Action=1 THEN
+                    TPWrite "R_Arm do not action";
+                    TPWrite "-----------------------";
+                ELSEIF Action=2 THEN
+                    TPWrite "R_Arm action";
+                    TPWrite "-----------------------";
+                    MoveAbsJ home_joint_R, v1000, z0, tool0;
+                    MoveAbsJ R_ac2_1\NoEOffs, v1000, z10, tool0;
+                    MoveJ R_ac2_2, v1000, z10, tool0;
+                    MoveJ R_ac2_3, v1000, z10, tool0;
+                    MoveJ R_ac2_2, v1000, z10, tool0;
+                    MoveAbsJ R_ac2_1\NoEOffs, v1000, z10, tool0;
+                    MoveAbsJ home_joint_R, v1000, z0, tool0;
+                ELSEIF Action=3 THEN
+                    WaitSyncTask sync01_5,task_All;
+                    SyncMoveOn sync01_6,task_All;
+                    MoveAbsJ home_joint_R\ID:=201, v1000, z0, tool0;
+                    MoveAbsJ R_ac2_1\ID:=202, v1000, z10, tool0;
+                    MoveJ R_ac2_2\ID:=203, v1000, z10, tool0;
+                    MoveJ R_ac2_3\ID:=204, v1000, z10, tool0;
+                    MoveJ R_ac2_2\ID:=205, v1000, z10, tool0;
+                    MoveAbsJ R_ac2_1\ID:=206, v1000, z10, tool0;
+                    MoveAbsJ home_joint_R\ID:=207, v1000, z0, tool0;
+                    SyncMoveOff sync01_7;
+                ELSEIF Action=4 THEN
+                    MoveAbsJ home_joint_R, v1000, z0, tool0;
+                ELSEIF Action=0 THEN
+                    Center_Signal := "x";
+                    TPWrite "No Action";
+                ENDIF 
+                IF Action <> 0 THEN
+                    Action := 0;
+                    TPWrite "Done_Routine";
+                    Center_Signal := "x";
+                    SocketSend client,\Str:="Done_Routine";
+                ENDIF
+                
+            ENDWHILE
+            
+         ENDIF
+         
+         IF rcv_data ="move"  THEN
+            MoveJ [[163.25,-329.41,208.68],[0.0218428,-0.85309,-0.107468,-0.510109],[0,-1,1,4],[-100.882,9E+09,9E+09,9E+09,9E+09,9E+09]], v1000, z200, tool0;
+            MoveJ [[181.20,-339.04,213.17],[0.675818,-0.596382,0.239381,-0.360963],[0,0,1,4],[-123.112,9E+09,9E+09,9E+09,9E+09,9E+09]], v1000, z200, tool0;
+		    MoveJ Cap_pose, v1000, z0, tool0;
+
+         ENDIF
+
+      ENDWHILE
+      SocketClose client;
+    ENDPROC
+ENDMODULE
+
+
+
+
+MODULE MainModule
+    CONST robtarget HomeL:=[[-8.88,181.45,197.44],[0.0562826,0.840162,-0.130281,0.523438],[0,0,0,4],[102.093,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Pre_HomeL:=[[26.39,428.32,242.51],[0.0562577,0.840114,-0.130248,0.523526],[0,0,0,4],[102.097,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+
+    VAR syncident syncHome;
+
+    PERS tasks task_All{2}:=[["T_ROB_L"],["T_ROB_R"]];
+
+    VAR syncident sync01_0;
+    VAR syncident sync01_1;
+    VAR syncident sync01_2;
+    VAR syncident sync01_3;
+    VAR syncident sync01_4;
+    VAR syncident sync01_5;
+    VAR syncident sync01_6;
+    VAR syncident sync01_7;
+    VAR syncident sync01_8;
+    VAR syncident sync01_9;
+
+    VAR syncident sync01_10;
+    VAR syncident sync01_11;
+    VAR syncident sync01_12;
+    VAR syncident sync01_13;
+    VAR syncident sync01_14;
+    VAR syncident sync01_15;
+    VAR syncident sync01_16;
+    VAR syncident sync01_17;
+    VAR syncident sync01_18;
+    VAR syncident sync01_19;
+    
+    CONST jointtarget home_joint_L:=[[0,-130,30,0,40,0],[135, 9E9, 9E9, 9E9, 9E9, 9E9]];
+    CONST robtarget Pick_L:=[[271.93,-184.27,142.13],[0.286082,0.650509,0.271824,-0.648928],[-2,0,2,4],[-128.536,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+    PERS num Action;
+  
+    CONST robtarget L_ac1_1 := [[-9.81,412.03,196.13],[0.0654575,0.838642,-0.112108,0.528986],[0,0,0,4],[102.157,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget L_ac1_2 := [[146.16,436.95,376.26],[0.0656925,0.838248,-0.112178,0.529567],[0,0,-1,4],[102.274,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget L_ac1_3 := [[146.14,436.90,376.25],[0.53217,0.153562,0.831663,-0.0393808],[0,0,1,4],[102.274,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    PROC main()
+
+        WaitSyncTask sync01_1,task_All;
+        SyncMoveOn sync01_2,task_All;
+       ! MoveJ HomeL\ID:=101,v1000,z50,tool0;
+        MoveAbsJ home_joint_L\ID:=101, v1000, z0, tool0;
+        SyncMoveOff sync01_3;
+  
+        WHILE TRUE do
+        WaitSyncTask sync01_4,task_All;
+            IF Action=1 THEN
+                MoveAbsJ home_joint_L, v1000, z0, tool0;
+                MoveJ L_ac1_1, v1000, z10, tool0;
+                MoveJ L_ac1_2, v1000, z10, tool0;
+                MoveJ L_ac1_3, v1000, z10, tool0;
+                MoveJ L_ac1_2, v1000, z10, tool0;
+                MoveJ L_ac1_1, v1000, z10, tool0;
+                MoveAbsJ home_joint_L, v1000, z0, tool0;
+                
+            ELSEIF Action=2 THEN
+                TPWrite "L_Arm do not action";
+            ELSEIF Action=3 THEN
+                WaitSyncTask sync01_5,task_All;
+                SyncMoveOn sync01_6,task_All;
+                MoveAbsJ home_joint_L\ID:=201, v1000, z0, tool0;
+                MoveJ L_ac1_1\ID:=202, v1000, z10, tool0;
+                MoveJ L_ac1_2\ID:=203, v1000, z10, tool0;
+                MoveJ L_ac1_3\ID:=204, v1000, z10, tool0;
+                MoveJ L_ac1_2\ID:=205, v1000, z10, tool0;
+                MoveJ L_ac1_1\ID:=206, v1000, z10, tool0;
+                MoveAbsJ home_joint_L\ID:=207, v1000, z0, tool0;
+                SyncMoveOff sync01_7;
+            ELSEIF Action=4 THEN
+                MoveAbsJ home_joint_L, v1000, z0, tool0;
+            ELSEIF Action=0 THEN
+                TPWrite "No Action";
+            ENDIF
+        
+        ENDWHILE
+        
+    ENDPROC
+ENDMODULE
